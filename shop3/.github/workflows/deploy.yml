@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-# 실행할 기능 설정 메인테스트 입니다
+# 실행할 기능 설정
 jobs:
   deploy:
     name: Deploy to EC2 with Docker # 작업(Job)의 이름
