@@ -1,0 +1,48 @@
+# 워크 플로우 이름 Action에 표시되는 이름
+name: Docker Deploy to EC2
+# 실행조건(트리거 개념). main 브랜치에 push가 발생시 jobs 실행
+on:
+  push:
+    branches:
+      - main
+# 실행할 기능 설정
+jobs:
+  deploy:
+    name: Deploy to EC2 with Docker # 작업(Job)의 이름
+    runs-on: ubuntu-latest # 배포 서버의 실행환경(우분트 최신버전)
+    steps:
+    - name: Checkout source code
+      uses: actions/checkout@v3 # 현재 레포지토리의 소스를 체크아웃함
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2 # Docker 멀티 플랫폼 빌드를 위한 세팅
+    - name: Build Docker image
+      run: docker build -t gdj90/shop3:${{ github.run_number }} .	# Docker 이미지를 현재 경로(.) 기준으로 빌드, 이미지 태그는 gdj90/shop3:실행번호 형식
+
+    - name: Save Docker image as tar
+      run: |
+        docker save gdj90/shop3:${{ github.run_number }} -o shop3.tar   
+        chmod 644 shop3.tar
+    - name: Copy image tar to EC2
+      uses: appleboy/scp-action@v0.1.7  # Docker 이미지를 tar 파일로 저장하고 권한 644 설정 (EC2로 복사용)
+      with:
+        host: ${{ secrets.EC2_HOST }}       # EC2 IP 또는 도메인 (GitHub에 등록된 시크릿)
+        username: ${{ secrets.EC2_USER }}   # EC2 접속 유저 (ex. ubuntu)
+        key: ${{ secrets.EC2_KEY }}         # SSH 프라이빗 키
+        source: "./shop3.tar"               # 복사할 파일
+        target: "/home/ubuntu"
+        overwrite: true                     # 파일 존재하면 덮어쓰기 기능
+        strip_components: 0                 # 경로 유지 필요없어
+    - name: Run Docker container on EC2     # EC2 서버에서 도커 컨테이너 생성
+      uses: appleboy/ssh-action@v1.0.0
+      with:                                
+        host: ${{ secrets.EC2_HOST }}       
+        username: ${{ secrets.EC2_USER }}   
+        key: ${{ secrets.EC2_KEY }}         
+        script: | # 컨테이너가 실행 중이면 중지, 기존 컨테이너 제거 (없어도 오류 안 나게 처리), 기존 이미지 제거, tar 파일에서 이미지 로드, 새 컨테이너 실행 (포트 8080, 볼륨 마운트 포함)
+          docker stop shop3 || true      
+          docker rm shop3 || true
+          docker image rm gdj90/shop3:${{ github.run_number }} || true
+          docker load -i shop3.tar
+          docker run -d --name shop3 -p 8080:8080 \
+            -v /home/ubuntu/upload:/app/upload \
+            gdj90/shop3:${{ github.run_number }}
