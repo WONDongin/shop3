@@ -1,0 +1,31 @@
+version: '3.8'
+services:
+  db:
+    image: mariadb:10.5
+    container_name: mariadb
+    environment:
+      MARIADB_ROOT_PASSWORD: rootpass
+      MARIADB_DATABASE: gdjdb
+      MARIADB_USER: gduser
+      MARIADB_PASSWORD: pass
+    volumes:
+      - db-data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+
+  shop3:
+    image: gdj90/shop3:latest
+    container_name: shop3
+    depends_on:
+      - db # shop 컨테이너는 db 컨테이너 실행 후에 실행됨. db 의존함
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./upload:/app/upload
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mariadb://db:3306/gdjdb
+      SPRING_DATASOURCE_USERNAME: gduser
+      SPRING_DATASOURCE_PASSWORD: 1234
+
+volumes:
+  db-data:
