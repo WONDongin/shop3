@@ -16,7 +16,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Remove existing latest image
+      - name: Remove existint latest image
         run: docker rmi gdj90/shop3:latest || true
 
       - name: Build Docker image
