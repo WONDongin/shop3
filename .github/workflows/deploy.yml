@@ -56,6 +56,7 @@ jobs:
           script: |
             cd /home/ubuntu
             docker compose down || true
+            docker rm -f shop3 || true
             docker rmi gdj90/shop3:latest || true
             docker load -i shop3.tar
             docker compose up -d
